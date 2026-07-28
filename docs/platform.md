@@ -1,0 +1,308 @@
+# Platform and Toolchain
+
+## 1. Hardware
+
+Target board:
+
+```text
+Adafruit Feather nRF52840 Sense
+```
+
+Important onboard resources:
+
+- Nordic nRF52840
+- Onboard digital PDM microphone
+- USB connector and native nRF52840 USB device support
+- User button
+- NeoPixel
+- Additional controllable LEDs
+- Adafruit UF2 bootloader
+- Existing SoftDevice supplied with the bootloader image
+
+Exact pin mappings must be copied from the official schematic, board definition, or datasheet and recorded in `firmware/platform/board.h`.
+
+Do not infer pins from Arduino labels alone.
+
+## 2. SDK
+
+Preferred SDK:
+
+```text
+nRF5 SDK 17.1.0
+```
+
+This is chosen because:
+
+- It is the latest nRF5 SDK release.
+- It supports the nRF52840, S140, USB, PDM, and BLE.
+- It provides a direct C/event-driven environment.
+- The project is educational and not a new commercial product.
+
+The nRF5 SDK is in maintenance mode. This project intentionally uses it for low-level learning.
+
+## 3. Compiler
+
+Preferred reference compiler:
+
+```text
+GNU Arm Embedded 9-2020-q2-major
+```
+
+Before changing the installed compiler, record:
+
+```bash
+arm-none-eabi-gcc --version
+```
+
+A newer compiler may work, but any warning, ABI, linker, or startup issue must be resolved rather than ignored.
+
+## 4. Build system
+
+Use:
+
+```text
+CMake + Ninja
+```
+
+The nRF5 SDK is not CMake-native. The project must explicitly configure:
+
+- CPU flags
+- ABI flags
+- SDK include directories
+- SDK source files
+- Startup assembly
+- CMSIS
+- nrfx drivers
+- USB libraries
+- BLE libraries
+- SoftDevice headers
+- Linker script
+- Post-build HEX/BIN/UF2 conversion
+
+Expected compile flags include the correct Cortex-M4F and floating-point ABI settings. These must match all linked objects.
+
+## 5. UF2 flashing
+
+The normal workflow is:
+
+1. Build an application HEX file at the correct linked addresses.
+2. Convert the HEX file to UF2 using the nRF52840 family identifier.
+3. Double-reset the Feather.
+4. Copy the UF2 file to the mounted bootloader drive.
+
+The build should generate:
+
+```text
+microphone.elf
+microphone.hex
+microphone.bin
+microphone.uf2
+microphone.map
+```
+
+The bootloader must be treated as protected because no SWD/J-Link recovery hardware is available.
+
+## 6. Bootloader inspection
+
+Before linking the BLE application, double-reset the board and inspect:
+
+```text
+INFO_UF2.TXT
+```
+
+Record:
+
+```text
+Bootloader version:
+SoftDevice version:
+Board identifier:
+UF2 family:
+```
+
+### TODO(USER): Paste the actual bootloader information
+
+```text
+Bootloader version: TODO(USER)
+SoftDevice version: TODO(USER)
+Board identifier: TODO(USER)
+UF2 family: TODO(USER)
+```
+
+Do not let an agent guess these values.
+
+## 7. Flash layout
+
+The application must not overlap:
+
+- MBR
+- SoftDevice
+- Adafruit bootloader
+- Bootloader configuration
+- MBR parameter page
+- Bootloader settings
+
+Typical application origins:
+
+```text
+S140 6.x -> 0x26000
+S140 7.x -> 0x27000
+```
+
+Typical upper bootloader region:
+
+```text
+0xF4000–0xFD7FF   Bootloader code
+0xFD800–0xFDFFF   Bootloader configuration
+0xFE000–0xFEFFF   MBR parameter page
+0xFF000–0xFFFFF   Bootloader settings
+```
+
+These must be verified against the installed bootloader source/version.
+
+### Linker variables
+
+The linker setup should define values such as:
+
+```cmake
+NRF_FLASH_ORIGIN
+NRF_FLASH_LENGTH
+NRF_RAM_ORIGIN
+NRF_RAM_LENGTH
+```
+
+The application flash end must remain below the bootloader start.
+
+## 8. SoftDevice RAM layout
+
+The RAM origin depends on the BLE configuration.
+
+Factors include:
+
+- Number of peripheral and central links
+- ATT MTU
+- Attribute table size
+- Data Length Extension
+- Vendor-specific UUID count
+- GATT queues
+- Security configuration
+
+Use a conservative initial BLE configuration:
+
+```text
+Peripheral links: 1
+Central links: 0
+ATT MTU: begin at default, then raise deliberately
+Vendor UUID count: minimum needed
+Attribute table: sized to the custom service
+```
+
+The application should call the SoftDevice enable/configuration path and capture the required RAM start reported by the SDK. Update the linker script only from measured/configured output.
+
+### TODO(USER): Explain the SoftDevice RAM process
+
+In your own words, explain:
+
+- Why the BLE application cannot simply use RAM from `0x20000000`
+- How BLE configuration changes SoftDevice RAM use
+- How you will determine the correct application RAM origin
+- What failure you expect if the linker RAM origin is wrong
+
+## 9. Clock configuration
+
+### High-frequency clock
+
+Do not deliberately use the internal HFINT oscillator as the final audio clock source.
+
+Use the external high-frequency crystal oscillator where required for stable PDM timing and radio operation.
+
+The intended PDM configuration is:
+
+```text
+PDM clock: 1.280 MHz
+Decimation ratio: 80
+PCM sample rate: 16 kHz
+```
+
+USB mode should explicitly ensure the required high-frequency clock is running before capture begins.
+
+BLE mode must respect SoftDevice ownership of clock and radio resources.
+
+### Low-frequency clock
+
+The LFCLK choice depends on the board hardware.
+
+Possible choices:
+
+- LFXO if the board includes a 32.768 kHz crystal
+- Calibrated LFRC otherwise
+
+### TODO(USER): Verify the LFCLK hardware
+
+Using the Feather Sense schematic, record:
+
+```text
+32.768 kHz crystal present: TODO(USER)
+Chosen LFCLK source: TODO(USER)
+Reason: TODO(USER)
+```
+
+## 10. Logging without SWD
+
+RTT cannot be read without a debug probe.
+
+Use:
+
+- USB CDC logging in debug builds
+- A fixed in-memory event log
+- Retained fault records
+- Runtime counters
+- LED error codes
+
+Build variants:
+
+```text
+usb-release
+usb-debug
+ble-release
+ble-debug
+host-tests
+```
+
+A BLE debug build may use USB CDC for diagnostics while BLE carries audio, but it must not expose USB Audio simultaneously.
+
+## 11. Pin mapping
+
+Create `firmware/platform/board.h` with:
+
+- PDM CLK
+- PDM DATA
+- User button
+- NeoPixel
+- Red LED
+- Blue LED
+- Active-high/active-low definitions
+- Pins reserved by QSPI, NFC, sensors, USB, or bootloader behavior
+
+### TODO(USER): Fill the board mapping
+
+```c
+#define BOARD_PDM_CLK_PIN       TODO_USER
+#define BOARD_PDM_DATA_PIN      TODO_USER
+#define BOARD_BUTTON_PIN        TODO_USER
+#define BOARD_NEOPIXEL_PIN      TODO_USER
+#define BOARD_RED_LED_PIN       TODO_USER
+#define BOARD_BLUE_LED_PIN      TODO_USER
+```
+
+Also list every source used to verify the mapping.
+
+## 12. Recovery limitations
+
+Because there is no SWD/J-Link hardware:
+
+- Do not overwrite the bootloader.
+- Do not change UICR casually.
+- Do not disable the reset path required by the bootloader.
+- Do not rely on firmware that can only be recovered through SWD.
+- Test linker addresses before copying UF2.
+- Keep a known-good LED application UF2 available.
