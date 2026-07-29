@@ -203,19 +203,19 @@ The two-week release is accepted when:
 - [ ] Core pure-C behavior is covered by host tests.
 - [ ] Known limitations are documented honestly.
 
-## TODO(USER): Prioritize the requirements
+## Prioritize the requirements
 
 For each category below, assign **Must**, **Should**, or **Could**, and explain one trade-off:
 
-- Cross-platform USB compatibility
-- USB latency
-- BLE latency
-- Audio quality
-- Long-duration reliability
-- Code modularity
-- Number of tests
-- LED polish
-- BLE compression
-- Documentation depth
+- Must: Cross-platform USB compatibility. I want it working on my iPhone, PC, Laptop, and Mac. Tradeoff is that we need to use USB Audio Class 1.0 official standards.
+- Must: USB latency < 30 ms. The average microphone has a delay of 10-35 ms, with headphone jack setups nearing 0 ms latency. Lower latency requires less buffering.
+- Must: BLE latency < 100 ms. More lenient, but should still be usable. Smaller buffer versus less tolerance for radio jitter.
+- Must: Audio quality: 16 kHz sampling. Lower bandwidth and memory use versus less high frequency fidelity than 48 kHz.
+- Must: Long-duration reliability 1 hour requried. 8 hours preferred. I want minimal test time for durability, but this is required.
+- Must: Code modularity: Capture produces frames. Processing transforms these frames, and the selected USB/BLE consumes them both. Neither capture nor processing needs to know whether USB or BLE are selected.
+- Should: Number of tests > 25: Unit tests for individual functions and components. Integration tests end-to-end. All in all, the overall goal should be that the mic works, not 200 tests. Development time is the main tradeoff
+- Could: LED polish. Polling / Blinking / Colors all handled. Consumes time, shouldn't interfere with audio.
+- Should: BLE compression. We need BLE compression to reduce bandwidth and prevent drops. Cost is low to moderate CPU usage as well as implementation complexity and state handling.
+- Could: Documentation depth. A lower tier concern. Documentation beyond the required build, ownership, protocol, and limitation documentation is optional.
 
 This prioritization should be written by the human before major implementation begins.

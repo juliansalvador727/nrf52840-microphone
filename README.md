@@ -140,17 +140,9 @@ Flash by double-resetting the Feather and copying `microphone.uf2` to the mounte
 
 Complete this before asking an agent to implement the core pipeline.
 
-### TODO(USER): Explain the project in your own words
+### Explain the project in your own words
 
-Write 5–10 sentences answering:
-
-- What problem does the project solve?
-- Why are USB and BLE separate transports?
-- Why can the nRF52840 not become a normal Bluetooth Classic headset?
-- What are the three hardest firmware problems you expect?
-- What would make the project flagship-level rather than a simple SDK integration?
-
-Do not let an agent write this section for you.
+This project solves the problem of not having a microphone by using an existing nRF52840 development kit. USB and BLE are separate transports as an exercise for me to implement both methods. nRF52840 cannot use a normal Bluetooth Classic headset because it does not support Bluetooth Classic (BR/EDR) nor A2DP (Advanced Audio Distribution Profile). The hardest firmware problems I expect are handling desync, initial audio capture, and continuous audio. This project would be goated if I could plug and use easily day to day.
 
 ## Status
 

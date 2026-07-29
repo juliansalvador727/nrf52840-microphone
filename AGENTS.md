@@ -216,13 +216,13 @@ The agent must preserve:
 - Learning notes
 - Decisions that are intentionally provisional
 
-## TODO(USER): Your collaboration rules
+## Your collaboration rules
 
-Write 5–8 personal rules for how you want the agent to help you. Consider:
-
-- When it should explain before coding
-- How large a patch may be
-- Whether it should propose tests first
-- What it must never implement without your attempt
-- How it should respond when your design is wrong
-- How much code it may generate at once
+- Be straight to the point I have ADHD.
+- No em dashes.
+- Start all messages with "Penguin \n".
+- Before coding, explain step by step all decisions.
+- A patch must be limited to a singular commit.
+- Tests will be proposed after implementation.
+- Never implement ANY code without explicit allowance.
+- When the design is wrong, immediately cite the exact lines of code or concept and offer up alternative means. Use Socratic Reasoning to explain any wrong concepts.

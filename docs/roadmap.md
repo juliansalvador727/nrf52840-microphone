@@ -11,7 +11,7 @@
 
 ## Day 0 — Decisions and preflight
 
-- [ ] Read all design documents.
+- [x] Read all design documents.
 - [ ] Complete the `TODO(USER)` requirements prioritization.
 - [ ] Complete the architecture ownership diagram.
 - [ ] Inspect `INFO_UF2.TXT`.
@@ -195,37 +195,13 @@
 
 ## Risk register
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| Wrong SoftDevice memory layout | Firmware does not boot | Inspect UF2 metadata and map file before BLE |
-| No RTT probe | Harder debugging | USB CDC, counters, retained fault record |
-| USB descriptor errors | Host rejects device | Start from minimal topology and inspect descriptors |
-| PDM/USB clock drift | Long-run overrun/underrun | Instrument queue depth before correction |
-| BLE throughput/backpressure | Drops and latency | Fragment by negotiated payload; oldest-drop policy |
-| Scope expansion | Missed two-week goal | Tag USB release before advanced BLE work |
-| Agent over-implementation | Reduced learning | Enforce `AGENTS.md` and protected TODOs |
-| Hardware recovery failure | Board temporarily unusable | Preserve bootloader and known-good UF2 |
-
-## TODO(USER): Daily time budget
-
-Fill in your realistic daily availability:
-
-| Day | Available hours | Main constraint |
-|---|---:|---|
-| 0 | TODO | TODO |
-| 1 | TODO | TODO |
-| 2 | TODO | TODO |
-| 3 | TODO | TODO |
-| 4 | TODO | TODO |
-| 5 | TODO | TODO |
-| 6 | TODO | TODO |
-| 7 | TODO | TODO |
-| 8 | TODO | TODO |
-| 9 | TODO | TODO |
-| 10 | TODO | TODO |
-| 11 | TODO | TODO |
-| 12 | TODO | TODO |
-| 13 | TODO | TODO |
-| 14 | TODO | TODO |
-
-After filling this out, move BLE work later if the USB schedule has less than roughly 60% of the total available time.
+| Risk                           | Impact                     | Mitigation                                          |
+| ------------------------------ | -------------------------- | --------------------------------------------------- |
+| Wrong SoftDevice memory layout | Firmware does not boot     | Inspect UF2 metadata and map file before BLE        |
+| No RTT probe                   | Harder debugging           | USB CDC, counters, retained fault record            |
+| USB descriptor errors          | Host rejects device        | Start from minimal topology and inspect descriptors |
+| PDM/USB clock drift            | Long-run overrun/underrun  | Instrument queue depth before correction            |
+| BLE throughput/backpressure    | Drops and latency          | Fragment by negotiated payload; oldest-drop policy  |
+| Scope expansion                | Missed two-week goal       | Tag USB release before advanced BLE work            |
+| Agent over-implementation      | Reduced learning           | Enforce `AGENTS.md` and protected TODOs             |
+| Hardware recovery failure      | Board temporarily unusable | Preserve bootloader and known-good UF2              |

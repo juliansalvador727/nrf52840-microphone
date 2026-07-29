@@ -176,12 +176,12 @@ The physical button initially switches transport mode rather than mute.
 
 Record at least:
 
-| Host | OS version | Enumerates | Records audio | Calling app | Notes |
-|---|---|---:|---:|---|---|
-| Primary laptop | TODO | TODO | TODO | TODO | TODO |
-| Second computer | TODO | TODO | TODO | TODO | TODO |
-| Android phone | TODO | TODO | TODO | TODO | TODO |
-| USB-C iPhone/iPad | TODO | TODO | TODO | TODO | TODO |
+| Host              | OS version | Enumerates | Records audio | Calling app | Notes |
+| ----------------- | ---------- | ---------: | ------------: | ----------- | ----- |
+| Primary laptop    | TODO       |       TODO |          TODO | TODO        | TODO  |
+| Second computer   | TODO       |       TODO |          TODO | TODO        | TODO  |
+| Android phone     | TODO       |       TODO |          TODO | TODO        | TODO  |
+| USB-C iPhone/iPad | TODO       |       TODO |          TODO | TODO        | TODO  |
 
 Do not claim universal phone compatibility from one device.
 
@@ -214,15 +214,21 @@ Track:
 - [ ] Queue depth remains bounded.
 - [ ] No memory usage grows over time.
 
-## TODO(USER): Descriptor walkthrough
+## User Descriptor walkthrough
 
 Before asking an agent to write the final descriptors, explain:
 
 - What an Input Terminal represents
+  The mic is represented by an Input Terminal. Microphone audio enters the USB audio function at the physical mic. Audio leaves the audio processing graph toward USB through an Output terminal.
 - Why a Feature Unit is needed
+  Allow host to mute mic.
 - What the Streaming Output Terminal connects
+  Audio leaving the AudioControl topology for USB AudioStreaming interface.
 - Why the endpoint is isochronous
+  In order to stream real-time time-sensitive data It requires fixed bandwidth, no retransmission, and scheduled bounded latency delivery.
 - Why the host uses an alternate interface setting
+  To give the host the flexibility to change device configurations when required without consuming USB bandwidth. Alternate setting 0 has no streaming endpoint, alternate setting 1 enables isochronous endpoint. Host switches these settings to start/stop streaming.
 - How 16 kHz becomes 32 bytes per USB frame
+  A full speed USB communications sends packets every 1 ms, and 16-bit audio streams at 16,000 samples per second produces 16 samples per ms, which equals 32 bytes of data.
 
 You may use the USB Audio Class specification and Nordic example as references, but write the explanation yourself.
