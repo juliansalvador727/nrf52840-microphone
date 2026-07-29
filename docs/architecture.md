@@ -372,14 +372,258 @@ Fatal errors should:
 
 ## TODO(USER): Draw the ownership sequence
 
-Create your own sequence diagram for one frame moving from PDM capture to USB and back to the free pool.
+sequenceDiagram
+autonumber
 
-Include:
+      participant Host
+      participant App as Main Loop / App
+      participant State as Audio Pipeline State
+      participant Pool as Free Frame Pool
+      participant Capture as PDM Capture Callback
+      participant PDM as PDM Driver + EasyDMA
+      participant Ready as READY Queue
+      participant Process as Processing
+      participant USB as USB Transport
+      participant Stats as Diagnostics
 
-- Which context performs each action
-- Exactly when ownership changes
-- What happens if a queue operation fails
-- What happens if USB is not ready
-- Which counters change
+      Note over Pool: Owns all 8 frames in FREE state
 
-The agent may proofread the diagram but should not create the first version.
+      %% Start USB streaming
+      Host->>USB: Select active streaming alternate setting
+      USB->>App: Streaming active
+      App->>PDM: Start capture
+
+      %% Prime current and next DMA buffers
+      loop Prime current and next DMA buffers
+          PDM-->>Capture: buffer_requested
+          Capture->>Pool: Acquire FREE frame
+          Pool-->>Capture: Frame, FREE to CAPTURE
+          Note over Capture: Capture owns frame
+          Capture->>PDM: Supply frame sample storage
+          Note over Capture,PDM: Capture stage owns frame<br/>EasyDMA is the only writer
+      end
+
+      %% Continuous PDM callback
+      PDM-->>Capture: buffer_requested and buffer_released
+
+      Note over Capture: Handle buffer request first
+
+      Capture->>Pool: Acquire next FREE frame
+
+      alt FREE frame available
+          Pool-->>Capture: Next frame, FREE to CAPTURE
+          Capture->>PDM: Supply next frame sample storage
+
+          alt PDM accepts buffer
+              Note over Capture,PDM: Next frame remains in CAPTURE
+          else PDM rejects buffer
+              Note over Capture: Capture still owns unused frame
+              Capture->>Pool: Release unused frame
+              Capture->>Stats: Increment unexpected_errors
+              Capture->>State: Set discontinuity_pending
+              Capture->>App: Request RECOVERING
+          end
+
+      else Free pool exhausted
+          Capture->>Stats: Increment pool_exhaustions
+
+          Note over Capture,Ready: Enter short critical section
+          Capture->>Ready: Pop oldest READY frame
+
+          alt Oldest READY frame available
+              Ready-->>Capture: Oldest frame, READY to CAPTURE
+              Capture->>Stats: Increment frames_dropped
+              Capture->>State: Set discontinuity_pending
+              Capture->>PDM: Reuse frame as next DMA buffer
+
+              alt PDM accepts reclaimed buffer
+                  Note over Capture,PDM: Capture continues without stopping
+              else PDM rejects reclaimed buffer
+                  Note over Capture: Capture still owns reclaimed frame
+                  Capture->>Pool: Release reclaimed frame
+                  Capture->>Stats: Increment unexpected_errors
+                  Capture->>App: Request RECOVERING
+              end
+
+          else No READY frame can be reclaimed
+              Capture->>State: Set discontinuity_pending
+              Capture->>App: Request RECOVERING
+          end
+
+          Note over Capture,Ready: Exit short critical section
+      end
+
+      %% Handle completed DMA frame
+      Note over Capture: Handle released buffer second
+      Note over Capture,PDM: EasyDMA no longer accesses released frame
+
+      Capture->>Stats: Increment pdm_frames_completed
+      Capture->>Capture: Set valid_samples
+      Capture->>Capture: Set sequence
+      Capture->>Capture: Set first_sample_index
+
+      Capture->>State: Atomically consume discontinuity_pending
+
+      alt Discontinuity was pending
+          State-->>Capture: Pending
+          Capture->>Capture: Set DISCONTINUITY flag
+      else No discontinuity
+          State-->>Capture: Clear
+      end
+
+      %% Transfer completed frame to READY
+      Note over Capture,Ready: Enter short critical section
+      Capture->>Ready: Try push completed frame
+
+      alt READY push succeeds
+          Note over Ready: READY queue owns frame
+          Capture->>Stats: Update maximum READY depth
+
+      else READY queue is full
+          Note over Capture: Capture still owns incoming frame
+          Capture->>Ready: Pop oldest frame
+          Ready-->>Capture: Oldest frame, READY to CAPTURE
+          Capture->>Stats: Increment frames_dropped
+          Capture->>Capture: Set incoming DISCONTINUITY flag
+          Capture->>Pool: Release oldest frame
+          Note over Pool: Pool owns released oldest frame
+          Capture->>Ready: Push incoming frame
+          Note over Ready: READY queue owns incoming frame
+          Capture->>Stats: Update maximum READY depth
+      end
+
+      Note over Capture,Ready: Exit short critical section
+
+      %% PDM hardware error
+      opt PDM driver reports underflow
+          PDM-->>Capture: Error event
+          Capture->>Stats: Increment pdm_overruns
+          Capture->>State: Set discontinuity_pending
+          Capture->>App: Request RECOVERING
+      end
+
+      %% Deferred processing
+      App->>Process: Process one READY frame
+      Note over Process,Ready: Enter short critical section
+      Process->>Ready: Pop frame
+      Note over Process,Ready: Exit short critical section
+
+      alt READY frame available
+          Ready-->>Process: Frame, READY to PROCESSING
+          Note over Process: Processing owns frame
+
+          Process->>Process: Validate frame metadata
+
+          alt Metadata is valid
+              Process->>Process: Gain, saturation, RMS, peak, mute ramp
+
+              opt Samples clipped
+                  Process->>Process: Saturate clipped samples
+                  Process->>Process: Set CLIPPED flag
+                  Process->>Stats: Increment clipped_samples
+              end
+
+              Process->>Stats: Increment frames_processed
+              Note over Process: Processing still owns frame
+
+              %% USB submission
+              Process->>USB: Submit frame
+
+              alt USB accepts frame
+                  Note over USB: Ownership transfers to USB
+                  Note over USB: Frame state is TRANSPORT
+
+                  loop Ten 1 ms USB packets
+                      Host->>USB: Request isochronous IN packet
+                      USB-->>Host: 32 bytes PCM
+                      USB->>Stats: Increment usb_packets_sent
+                  end
+
+                  USB->>USB: Wait for final SDK completion
+                  Note over USB: SDK no longer accesses frame
+                  USB->>Pool: Release frame
+                  Note over Pool: Frame returns to FREE
+
+              else USB rejects frame
+                  Note over Process: Processing still owns frame
+                  Process->>Stats: Increment frames_dropped
+                  Process->>State: Set discontinuity_pending
+                  Process->>Pool: Release frame
+                  Note over Pool: Frame returns to FREE
+              end
+
+          else Impossible metadata
+              Process->>Stats: Increment unexpected_errors
+              Process->>App: Enter FATAL_ERROR
+              Note over Process: Do not process invalid memory range
+          end
+
+      else READY queue empty
+          Ready-->>Process: No frame
+          Process-->>App: Continue main loop or low-power wait
+      end
+
+      %% USB underrun
+      opt Host requests audio but USB has no samples
+          Host->>USB: Request isochronous IN packet
+          USB-->>Host: 32 bytes zero-valued PCM
+          USB->>Stats: Increment usb_underruns
+          USB->>State: Set discontinuity_pending
+      end
+
+      %% Host mute
+      opt Host changes mute control
+          Host->>USB: Set mute
+          USB->>App: Update mute state
+          Note over App,Process: Processing ramps samples toward zero<br/>USB streaming continues
+      end
+
+      %% Clean stop
+      Host->>USB: Select alternate setting 0 or disconnect
+      USB->>App: Streaming inactive
+      App->>PDM: Stop capture
+
+      PDM-->>Capture: Release all DMA buffers
+      Note over Capture,PDM: SDK no longer accesses returned buffers
+
+      loop Every returned CAPTURE frame
+          Capture->>Pool: Release frame
+      end
+
+      loop Until READY queue is empty
+          App->>Ready: Pop frame
+          Ready-->>App: READY frame
+          App->>Pool: Release frame
+      end
+
+      opt Processing owns a frame
+          Process->>Pool: Release frame
+      end
+
+      App->>USB: Cancel pending USB transfer
+      USB-->>App: Transfer stopped and memory released
+
+      opt USB owns a frame
+          USB->>Pool: Release frame
+      end
+
+      App->>Pool: Verify 8 unique FREE frames
+
+      alt All ownership invariants pass
+          Note over App,Pool: Clean stop complete
+      else Missing or duplicate ownership
+          App->>Stats: Increment unexpected_errors
+          App->>App: Enter FATAL_ERROR
+      end
+
+      %% Deferred recovery
+      opt recovery_requested
+          Note over App: Run the same clean-stop sequence
+          App->>Pool: Verify all 8 frames are uniquely owned
+
+          alt Ownership is consistent and host is streaming
+              App->>PDM: Restart capture
+          else Ownership remains inconsistent
+              App->>App: Enter FATAL_ERROR
+          end
+      end

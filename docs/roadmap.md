@@ -12,7 +12,7 @@
 ## Day 0 — Decisions and preflight
 
 - [x] Read all design documents.
-- [ ] Complete the `TODO(USER)` requirements prioritization.
+- [x] Complete the `TODO(USER)` requirements prioritization.
 - [ ] Complete the architecture ownership diagram.
 - [ ] Inspect `INFO_UF2.TXT`.
 - [ ] Record installed `arm-none-eabi-gcc` version.
