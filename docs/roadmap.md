@@ -13,13 +13,55 @@
 
 - [x] Read all design documents.
 - [x] Complete the `TODO(USER)` requirements prioritization.
-- [ ] Complete the architecture ownership diagram.
-- [ ] Inspect `INFO_UF2.TXT`.
-- [ ] Record installed `arm-none-eabi-gcc` version.
-- [ ] Verify the Feather pin map.
-- [ ] Verify LFCLK hardware.
+- [x] Complete the architecture ownership diagram.
+- [x] Inspect `INFO_UF2.TXT`.
+      Bootloader version: 0.8.0
+      SoftDevice version: S140 6.1.1
+      Board identifier: nRF52840-Feather-Sense
+      Bootloader date: Sep 29 2023
+      UF2 family identifier: 0xADA52840
+- [x] Record installed `arm-none-eabi-gcc` version.
+      arm-none-eabi-gcc (15:13.2.rel1-2) 13.2.1 20231009
+- [x] Verify the Feather pin map.
+
+      PDM Data: P0.00
+      PDM Clock: P0.01
+      User Button: P1.02; Active Low, connecting P1.02 to GND
+      NeoPixel: P0.16; Serial Data, not a simple active level
+      Red LED: P1.09; Active High
+      Blue LED: P1.10; Active High
+      NFC1: P0.09
+      NFC2: P0.10
+      Voltage Monitor: P0.29
+      SCL P0.11
+      SDA P0.12
+      IMU INT1: P1.11. polarity is sensor-configurable. if used configure to active low. if mic does not use the imu interrupt, mark reserved.
+      APDS IRQ: P1.00
+
+      The QSPI pins are documented in Adafruit's board-support files because they are internal. These are marked as RESERVED for onboard QSPI flash.
+      Do not configure them as GPIOs.
+      QSPI clock: P0.19
+      QSPI CS: P0.20
+      QSPI IO0: P0.17
+      QSPI IO1: P0.22
+      QSPI IO2: P0.23
+      QSPI IO3: P0.21
+
+      APDS9960 interrupt output is active-low, open-drain
+      `NRF_GPIO_PIN_MAP(0,0)` // data
+      `NRF_GPIO_PIN_MAP(0,1)` // clock
+
+      Adafruit Feather Sense pinout (https://learn.adafruit.com/adafruit-feather-sense/pinouts)
+      Adafruit board variant.cpp (https://github.com/adafruit/Adafruit_nRF52_Arduino/blob/master/variants/feather_nrf52840_sense/variant.cpp)
+      Adafruit board variant.h (https://github.com/adafruit/Adafruit_nRF52_Arduino/blob/master/variants/feather_nrf52840_sense/variant.h)
+      Official Rev C schematic (https://github.com/adafruit/Adafruit-Feather-nRF52840-Sense-PCB/blob/master/Adafruit%20Feather%20nRF52840%20Sense%20Rev%20C.sch)
+
+- [x] Verify LFCLK hardware.
+      32.768 kHz crystal present: No
+      Chosen LFCLK source: Calibrated LFRC
+      Reason: The XL1 and XL2 pins are used by the PDM microphone, and Adafruit’s board configuration explicitly selects LFRC.
 - [ ] Decide the initial C test framework.
-- [ ] Create the repository and initial commit.
+- [x] Create the repository and initial commit.
 
 **Exit criterion:** no unknown linker origin, pin mapping, or bootloader/SoftDevice version.
 
