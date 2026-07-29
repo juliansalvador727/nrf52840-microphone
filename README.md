@@ -1,11 +1,11 @@
-# Modular USB/BLE Microphone — nRF52840
+# USB/BLE nRF52840 Microphone
 
 A real-time embedded audio project built in C for the Adafruit Feather nRF52840 Sense.
 
 The device captures mono audio from the onboard PDM microphone and sends the same transport-independent audio frames through one of two mutually exclusive transports:
 
-1. **USB Audio Class 1.0** — the first release, exposing a wired, driverless microphone to computers and compatible phones.
-2. **Custom BLE audio** — a later release, sending live PCM or compressed voice frames to a Python receiver.
+1. USB Audio Class 1.0: the first release, exposing a wired, driverless microphone to computers and compatible phones.
+2. BLE audio: a later release, sending live PCM or compressed voice frames to a Python/C++ receiver.
 
 The project is intended to demonstrate firmware architecture, DMA-backed audio capture, fixed-memory ownership, USB device development, BLE protocol design, testing, and measurable real-time behavior.
 
