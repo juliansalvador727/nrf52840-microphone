@@ -60,7 +60,9 @@
       32.768 kHz crystal present: No
       Chosen LFCLK source: Calibrated LFRC
       Reason: The XL1 and XL2 pins are used by the PDM microphone, and Adafruit’s board configuration explicitly selects LFRC.
-- [ ] Decide the initial C test framework.
+- [x] Decide the initial C test framework.
+      Unity test framework driven through CTest. Unity remains a host-only
+      dependency and its revision will be pinned when added.
 - [x] Create the repository and initial commit.
 
 **Exit criterion:** no unknown linker origin, pin mapping, or bootloader/SoftDevice version.

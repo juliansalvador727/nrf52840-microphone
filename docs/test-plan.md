@@ -16,6 +16,16 @@ Tests are divided into:
 
 Platform-independent C modules should compile with the host compiler.
 
+Selected test setup:
+
+```text
+Unity test framework driven through CTest
+```
+
+Unity is a host-test dependency only. Production firmware modules must not
+include Unity headers or depend on Unity behavior. The Unity revision must be
+pinned when the dependency is added to the build.
+
 Potential structure:
 
 ```text

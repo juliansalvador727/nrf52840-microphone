@@ -119,13 +119,14 @@ Board identifier:
 UF2 family:
 ```
 
-### TODO(USER): Paste the actual bootloader information
+### Bootloader information
 
 ```text
-Bootloader version: TODO(USER)
-SoftDevice version: TODO(USER)
-Board identifier: TODO(USER)
-UF2 family: TODO(USER)
+Bootloader version: 0.8.0
+SoftDevice version: S140 6.1.1
+Board identifier: nRF52840-Feather-Sense
+Bootloader date: Sep 29 2023
+UF2 family identifier: 0xADA52840
 ```
 
 Do not let an agent guess these values.
@@ -141,23 +142,35 @@ The application must not overlap:
 - MBR parameter page
 - Bootloader settings
 
-Typical application origins:
+Verified layout for the installed S140 6.1.1 and Adafruit bootloader 0.8.0:
 
 ```text
-S140 6.x -> 0x26000
-S140 7.x -> 0x27000
+0x00000-0x25FFF   MBR and S140 6.1.1
+0x26000-0xECFFF   Application
+0xED000-0xF3FFF   Reserved application/DFU space
+0xF4000-0xFD7FF   Bootloader code
+0xFD800-0xFDFFF   Bootloader configuration
+0xFE000-0xFEFFF   MBR parameter page
+0xFF000-0xFFFFF   Bootloader settings
 ```
 
-Typical upper bootloader region:
+The application linker values are:
 
 ```text
-0xF4000–0xFD7FF   Bootloader code
-0xFD800–0xFDFFF   Bootloader configuration
-0xFE000–0xFEFFF   MBR parameter page
-0xFF000–0xFFFFF   Bootloader settings
+NRF_FLASH_ORIGIN = 0x26000
+NRF_FLASH_LENGTH = 0xC7000
+Application end, exclusive = 0xED000
 ```
 
-These must be verified against the installed bootloader source/version.
+These values are verified against:
+
+- [Adafruit nRF52 Bootloader 0.8.0 `linker/nrf52840.ld`](https://github.com/adafruit/Adafruit_nRF52_Bootloader/blob/0.8.0/linker/nrf52840.ld)
+- [Adafruit nRF52 Arduino `nrf52840_s140_v6.ld`](https://github.com/adafruit/Adafruit_nRF52_Arduino/blob/master/cores/nRF5/linker/nrf52840_s140_v6.ld)
+- [Adafruit nRF52 Arduino Feather Sense board configuration for S140 6.1.1](https://github.com/adafruit/Adafruit_nRF52_Arduino/blob/master/boards.txt)
+
+The application ends at `0xED000`, not at the bootloader start. The region from
+`0xED000` through `0xF3FFF` must remain reserved for the Adafruit application and
+DFU layout.
 
 ### Linker variables
 
@@ -241,9 +254,9 @@ Possible choices:
 Using the Feather Sense schematic, record:
 
 ```text
-32.768 kHz crystal present: TODO(USER)
-Chosen LFCLK source: TODO(USER)
-Reason: TODO(USER)
+32.768 kHz crystal present: No
+Chosen LFCLK source: Calibrated LFRC
+Reason: The XL1 and XL2 pins are used by the PDM microphone, and Adafruit’s board configuration explicitly selects LFRC.
 ```
 
 ## 10. Logging without SWD
@@ -283,18 +296,46 @@ Create `firmware/platform/board.h` with:
 - Active-high/active-low definitions
 - Pins reserved by QSPI, NFC, sensors, USB, or bootloader behavior
 
-### TODO(USER): Fill the board mapping
+### Board mapping
 
 ```c
-#define BOARD_PDM_CLK_PIN       TODO_USER
-#define BOARD_PDM_DATA_PIN      TODO_USER
-#define BOARD_BUTTON_PIN        TODO_USER
-#define BOARD_NEOPIXEL_PIN      TODO_USER
-#define BOARD_RED_LED_PIN       TODO_USER
-#define BOARD_BLUE_LED_PIN      TODO_USER
+#define BOARD_PDM_CLK_PIN       NRF_GPIO_PIN_MAP(0, 1)
+#define BOARD_PDM_DATA_PIN      NRF_GPIO_PIN_MAP(0, 0)
+#define BOARD_BUTTON_PIN        NRF_GPIO_PIN_MAP(1, 2)
+#define BOARD_NEOPIXEL_PIN      NRF_GPIO_PIN_MAP(0, 16)
+#define BOARD_RED_LED_PIN       NRF_GPIO_PIN_MAP(1, 9)
+#define BOARD_BLUE_LED_PIN      NRF_GPIO_PIN_MAP(1, 10)
 ```
 
-Also list every source used to verify the mapping.
+Electrical behavior:
+
+- User button: active-low; a press connects P1.02 to ground
+- Red LED: active-high
+- Blue LED: active-high
+- NeoPixel: serialized data signal, not a simple active level
+
+Reserved onboard pins:
+
+- NFC1: P0.09
+- NFC2: P0.10
+- Voltage monitor: P0.29
+- I2C SCL: P0.11
+- I2C SDA: P0.12
+- IMU INT1: P1.11
+- APDS9960 interrupt: P1.00, active-low open-drain
+- QSPI clock: P0.19
+- QSPI chip select: P0.20
+- QSPI IO0: P0.17
+- QSPI IO1: P0.22
+- QSPI IO2: P0.23
+- QSPI IO3: P0.21
+
+Verification sources:
+
+- [Adafruit Feather Sense pinout](https://learn.adafruit.com/adafruit-feather-sense/pinouts)
+- [Adafruit Feather nRF52840 Sense `variant.cpp`](https://github.com/adafruit/Adafruit_nRF52_Arduino/blob/master/variants/feather_nrf52840_sense/variant.cpp)
+- [Adafruit Feather nRF52840 Sense `variant.h`](https://github.com/adafruit/Adafruit_nRF52_Arduino/blob/master/variants/feather_nrf52840_sense/variant.h)
+- [Official Adafruit Feather nRF52840 Sense Rev C schematic](https://github.com/adafruit/Adafruit-Feather-nRF52840-Sense-PCB/blob/master/Adafruit%20Feather%20nRF52840%20Sense%20Rev%20C.sch)
 
 ## 12. Recovery limitations
 
